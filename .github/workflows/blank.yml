@@ -1,0 +1,42 @@
+
+name: Discord GitHub Logs
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  discord-log:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send log to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          REPOSITORY: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+        run: |
+          payload=$(jq -n \
+            --arg repo "$REPOSITORY" \
+            --arg actor "$ACTOR" \
+            --arg branch "$BRANCH" \
+            --arg message "$COMMIT_MESSAGE" \
+            --arg url "$COMMIT_URL" \
+            '{
+              content: ("📦 **Ny GitHub-ændring**\n" +
+                "**Repository:** " + $repo + "\n" +
+                "**Bruger:** " + $actor + "\n" +
+                "**Branch:** " + $branch + "\n" +
+                "**Commit:** " + $message + "\n" +
+                "🔗 " + $url)
+            }')
+
+          curl --fail-with-body -sS \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$DISCORD_WEBHOOK"
